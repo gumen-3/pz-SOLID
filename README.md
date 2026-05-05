@@ -1,71 +1,28 @@
-# Practical lesson pz-SOLID  
-# Практична реалізація SOLID принципів  
+# Практична реалізація SOLID
 
-> У цьому занятті студенти отримують практичні навички застосування SOLID принципів під час рефакторингу існуючого коду.  
-> Мета — створити гнучку, масштабовану та чисту архітектуру шляхом застосування SRP, OCP, LSP, ISP та DIP.
+## Мета
+Створити гнучку, масштабовану та чисту архітектуру шляхом застосування SRP, OCP, LSP, ISP та DIP
 
----
+## Аналіз вихідного коду (Анти-патерни)
 
-## What need to do:
-* Провести аналіз вихідного «анти-SOLID» коду  
-* Визначити порушення кожного SOLID принципу  
-* Виконати рефакторинг згідно з:
-  * SRP — Single Responsibility Principle  
-  * OCP — Open/Closed Principle  
-  * LSP — Liskov Substitution Principle  
-  * ISP — Interface Segregation Principle  
-  * DIP — Dependency Inversion Principle  
-* Створити відповідні інтерфейси й абстракції  
-* Усунути зайві або циклічні залежності  
-* Додати мінімальний набір unit-тестів після рефакторингу  
+У файлі `src/original/badNetworkManager.ts` виявлено такі проблеми:
 
----
+1. **SRP:** Клас `BadNetworkManager` відповідав за логіку конфігурації, запис логів через локальний Syslog та відправку SMS-алертів.
+2. **OCP:** Метод `deployConfiguration` використовував жорсткий набір умов (`if-else`) для визначення типу пристрою. Впровадження нових моделей вимагало б зміни основного класу.
+3. **LSP:** Клас `UnmanagedSwitch` успадковував базовий, але ламав логіку програми, викидаючи `Error` при спробі конфігурації VLAN, замість того, щоб безпечно обробити обмеження апаратури.
+4. **ISP:** Універсальний інтерфейс `INetworkOperations` містив метод `blockMalware`. Керований комутатор не повинен реалізовувати логіку глибокого аналізу пакетів (DPI), характерну для фаєрволів.
+5. **DIP:** Клас безпосередньо залежав від конкретних реалізацій інфраструктури (`LocalSyslog`, `AdminSmsAlert`). Це робило тестування неможливим без підняття реальних сервісів.
 
-## Acceptance criteria
-* Реалізація на мові Typescript 
-* Студент розуміє кожен SOLID принцип та пояснює його застосування  
-* Увесь вихідний код проаналізовано  
-* Усі порушення SOLID знайдено та описано  
-* Після рефакторингу:
-  * Кожен клас має одну відповідальність (SRP)  
-  * Код розширюється через нові класи, а не редагування існуючих (OCP)  
-  * Класи-нащадки повністю заміщають базові (LSP)  
-  * Інтерфейси невеликі й специфічні (ISP)  
-  * Залежності реалізовані через абстракції (DIP)  
-* Код структурований, логічний та зрозумілий  
-* Усі тести проходять успішно  
-* Звіт оформлений у Markdown (README.md)
+## Опис рефакторингу
 
-## Directory Structure
-```
-├── pz-SOLID
-│   ├── src
-│   │   ├── original          # код із навмисними порушеннями SOLID
-│   │   ├── refactored        # код після рефакторингу
-│   │   ├── interfaces        # абстракції та інтерфейси
-│   ├── tests
-│   │   ├── refactored.spec.js
-│   ├── .editorconfig
-│   ├── .gitignore
-│   ├── jest.config.js
-│   ├── package.json
-│   ├── package-lock.json
-│   ├── README.md
-└──
-```
+1. **SRP:** `NetworkOrchestrator` тепер лише координує процес розгортання. Логування (`RemoteSyslogServer`) та сповіщення винесені в окремі класи.
+2. **OCP:** Замість `if-else` створено абстрактний клас `NetworkDevice`. Додавання нових пристроїв тепер відбувається виключно створенням нових дочірніх класів (`CiscoCatalystSwitch`, `NextGenFirewall`).
+3. **LSP:** Кожен нащадок `NetworkDevice` коректно реалізує абстрактний метод `applyConfiguration()`, що гарантує передбачувану поведінку програми без раптових крешів.
+4. **ISP:** Великий інтерфейс розбито на специфічні ролі: `IVlanConfigurable`, `IRoutable`, `ISecurityAppliance`. Класи імплементують лише те, що підтримують апаратно.
+5. **DIP:** Оркестратор приймає залежності через конструктор (абстракції `ILogger`, `IAlertService`), що дозволило легко передати моки (mocks) під час юніт-тестування.
 
-## Useful links
+## Запуск тестів
 
-[SOLID Principles Explained](https://www.baeldung.com/solid-principles)
-
-[SOLID: The First 5 Principles of Object-Oriented Design](https://www.freecodecamp.org/news/solid-principles-explained-in-plain-english/)
-
-[JavaScript SOLID: Реалізація принципів](https://khalilstemmler.com/articles/solid-principles/)
-
-[Clean Code Concepts Adapted for JavaScript](https://github.com/ryanmcdermott/clean-code-javascript)
-
-[Dependency Injection in JavaScript](https://javascript.plainenglish.io/dependency-injection-in-javascript-1b82a8101c1a)
-
-
-
-
+```bash
+npm install
+npx jest
